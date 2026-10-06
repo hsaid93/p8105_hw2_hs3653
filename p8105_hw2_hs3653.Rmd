@@ -1,0 +1,77 @@
+---
+title: "p8105_hw2_hs3653"
+author: "Hyder Said"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(readxl)
+library(janitor)
+```
+
+## Problem 1
+```{r}
+subway_df = 
+  read_csv(
+    "data/NYC_Transit_Subway_Entrance_And_Exit_Data.csv",
+    col_types = cols(
+      Route8 = "c",
+      Route9 = "c",
+      Route10 = "c",
+      Route11 = "c"
+    )
+  ) |>
+  janitor::clean_names() |>
+  select(
+    line, station_name, station_latitude, station_longitude,
+    starts_with("route"), entry, exit_only, vending,
+    entrance_type, ada
+  ) |>
+  mutate(
+    entry = case_match(
+      entry,
+      "YES" ~ TRUE,
+      "NO" ~ FALSE
+    )
+  )
+
+glimpse(subway_df)
+```
+
+# Rows and columns in the cleaned dataset
+```{r}
+dim(subway_df)
+```
+
+# Distinct stations, identified by both line and station name
+```{r}
+subway_df |>
+  distinct(line, station_name) |>
+  nrow()
+```
+
+# Distinct ADA-compliant stations
+```{r}
+subway_df |>
+  filter(ada == TRUE) |>
+  distinct(line, station_name) |>
+  nrow()
+```
+
+
+# Proportion of entrances/exits without vending that allow entry
+```{r}
+subway_df |>
+  filter(vending == "NO") |>
+  summarise(proportion_allow_entry = mean(entry))
+```
+
+The dataset contains information on 1,868 subway entrances and exits, including station names, lines, station coordinates, routes served, entry availability, vending, entrance type, exit-only status, and ADA compliance. I standardized column names, retained the relevant variables, specified character types for route columns 8-11, and converted entry availability to a logical variable. The cleaned dataset contains 1,868 rows and 20 columns. These data are not yet tidy because routes served are spread across 11 columns.
+
+There are 465 distinct stations, identified by station name and line, of which 84 are ADA compliant. Among station entrances and exits without vending, 37.7% allow entry. After reshaping the route columns into route-number and route-name variables, 60 distinct stations serve the A train, of which 17 are ADA compliant.
+
+## Problem 2
+
+## Problem 3
