@@ -169,3 +169,157 @@ gwynnda_june2022_butts
 The combined dataset contains `r nrow(trash_wheel_df)` dumpster collection observations from Mr. Trash Wheel, Professor Trash Wheel, and Gwynnda. Key variables include collection date, trash weight in tons, volume in cubic yards, and counts of litter such as plastic bottles and cigarette butts. I standardized column names, removed rows without dumpster numbers, harmonized variable types, and rounded sports-ball counts to integers. A wheel identifier distinguishes observations from the three sources. Based on available data, Professor Trash Wheel collected `r round(professor_total_weight, 2)` tons of trash, and Gwynnda collected `r format(gwynnda_june2022_butts, big.mark = ",", scientific = FALSE, trim = TRUE)` cigarette butts in June 2022.
 
 ## Problem 3
+
+# Baseline demographics
+
+Baseline data/demographics (all patients):
+```{r}
+baseline_raw_df = 
+  read_csv(
+    "data/data_mci/MCI_baseline.csv",
+    skip = 1,
+    na = c("", "NA", ".")
+  ) |>
+  janitor::clean_names()
+
+baseline_df = 
+  baseline_raw_df |>
+  rename(baseline_age = current_age) |>
+  mutate(
+    sex = factor(
+      sex,
+      levels = c(0, 1),
+      labels = c("Female", "Male")
+    ),
+    apoe4 = factor(
+      apoe4,
+      levels = c(0, 1),
+      labels = c("Non-carrier", "Carrier")
+    )
+  ) |>
+  filter(is.na(age_at_onset) | age_at_onset > baseline_age)
+
+baseline_summary = 
+  baseline_df |>
+  summarise(
+    eligible_participants = n(),
+    developed_mci = sum(!is.na(age_at_onset)),
+    mean_baseline_age = mean(baseline_age)
+  )
+
+
+```
+
+ApoE4 in Women:
+```{r}
+women_apoe4_summary = 
+  baseline_df |>
+  filter(sex == "Female") |>
+  summarise(
+    women = n(),
+    apoe4_carriers = sum(apoe4 == "Carrier"),
+    proportion_carriers = mean(apoe4 == "Carrier")
+  )
+
+baseline_summary
+women_apoe4_summary
+```
+
+I imported the baseline data and used the second row as the column headers. I cleaned the column names, treated "." as missing, and converted sex and APOE4 carrier status to factors from numeric. There were `r nrow(baseline_raw_df)` participants in the original dataset. I removed `r nrow(baseline_raw_df) - nrow(baseline_df)` participants whose MCI onset age was at or before their baseline age because they did not meet the requirement of being MCI-free at baseline. This left `r nrow(baseline_df)` eligible participants, of whom `r baseline_summary$developed_mci` developed MCI during follow-up. Their average baseline age was `r round(baseline_summary$mean_baseline_age, 2)` years. Among the women in this eligible group, `r women_apoe4_summary$apoe4_carriers` of `r women_apoe4_summary$women` (`r round(100 * women_apoe4_summary$proportion_carriers, 1)`%) were APOE4 carriers. After tidying, the data has one row per participant and six columns: ID, baseline age, sex, education (years), APOE4 carrier status, and age at MCI onset.
+
+# Longitudinal amyloid data
+
+```{r}
+amyloid_wide_df = 
+  read_csv(
+    "data/data_mci/mci_amyloid.csv",
+    skip = 1,
+    na = c("", "NA", ".", "Na")
+  ) |>
+  janitor::clean_names() |>
+  rename(id = study_id)
+
+amyloid_df = 
+  amyloid_wide_df |>
+  pivot_longer(
+    cols = -id,
+    names_to = "time",
+    values_to = "amyloid_ratio"
+  ) |>
+  mutate(
+    amyloid_ratio = as.numeric(amyloid_ratio),
+    time = case_when(
+      time == "baseline" ~ 0,
+      time == "time_2" ~ 2,
+      time == "time_4" ~ 4,
+      time == "time_6" ~ 6,
+      time == "time_8" ~ 8
+    )
+  )
+
+amyloid_summary = 
+  amyloid_df |>
+  summarise(
+    participants = n_distinct(id),
+    participant_visits = n(),
+    missing_ratios = sum(is.na(amyloid_ratio))
+  )
+
+amyloid_summary
+```
+
+I imported the amyloid data by skipping the first row, which contained variable descriptions, and cleaned the column names. I treated both "NA" and "Na" as missing values. The dataset includes `r amyloid_summary$participants` participants with measurements scheduled at baseline as well as 2, 4, 6, and 8 years. I converted data from wide to long format so that each row represents one participant at a scheduled time point. I kept separate columns for participant ID, years since baseline, and the amyloid beta 42/40 ratio. Time and amyloid beta ratio were stored as numeric variables. The tidy dataset contains `r amyloid_summary$participant_visits` rows and three columns. I retained the `r amyloid_summary$missing_ratios` missing ratios to keep the scheduled time points visible even when a measurement was unavailable.
+
+# Participants appearing in only one dataset
+
+```{r}
+
+baseline_only_df = 
+  baseline_df |>
+  anti_join(amyloid_wide_df, by = "id")
+
+amyloid_only_df = 
+  amyloid_wide_df |>
+  anti_join(baseline_df, by = "id")
+
+amyloid_only_raw_df = 
+  amyloid_wide_df |>
+  anti_join(baseline_raw_df, by = "id")
+
+excluded_with_amyloid_df = 
+  baseline_raw_df |>
+  anti_join(baseline_df, by = "id") |>
+  semi_join(amyloid_wide_df, by = "id")
+
+baseline_only_df
+amyloid_only_df
+```
+
+I compared participant IDs across the two datasets using anti_join(). There were `r nrow(baseline_only_df)` participants in the cleaned baseline dataset who were not in the amyloid dataset, and `r nrow(amyloid_only_df)` participants in the amyloid dataset who were not in the cleaned baseline dataset. Of the latter, `r nrow(excluded_with_amyloid_df)` were removed because their MCI onset was at or before baseline, while the other `r nrow(amyloid_only_raw_df)` were not in the original baseline file. These differences reflect both participants missing from one of the original files and those excluded during baseline cleaning.
+
+# Combine datasets and export
+Both cleaned datasets
+```{r} 
+mci_combined_df = 
+  inner_join(baseline_df, amyloid_df, by = "id") |>
+  arrange(id, time)
+
+combined_summary = 
+  mci_combined_df |>
+  summarise(
+    participants = n_distinct(id),
+    participant_visits = n(),
+    variables = ncol(mci_combined_df)
+  )
+
+combined_summary
+
+```
+
+Export csv
+```{r}
+write_csv(mci_combined_df, "data/mci_combined.csv")
+```
+
+
+I used inner_join() to combine the cleaned baseline and amyloid data by participant ID, keeping only participants who appeared in both datasets. The combined dataset includes `r combined_summary$participants` participants, `r combined_summary$participant_visits` rows, and `r combined_summary$variables` columns. Each row represents one participant at a scheduled time point, with their baseline information repeated across visits. Missing amyloid ratios were retained. I exported the combined data to `data/mci_combined.csv` using write_csv().
