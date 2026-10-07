@@ -252,18 +252,22 @@ amyloid_df =
     )
   )
 
-amyloid_summary = 
+amyloid_participants = 
   amyloid_df |>
-  summarise(
-    participants = n_distinct(id),
-    participant_visits = n(),
-    missing_ratios = sum(is.na(amyloid_ratio))
-  )
+  distinct(id) |>
+  nrow()
 
-amyloid_summary
+missing_ratios = 
+  amyloid_df |>
+  filter(is.na(amyloid_ratio)) |>
+  nrow()
+
+amyloid_participants
+nrow(amyloid_df)
+missing_ratios
 ```
 
-I imported the amyloid data by skipping the first row, which contained variable descriptions, and cleaned the column names. I treated both "NA" and "Na" as missing values. The dataset includes `r amyloid_summary$participants` participants with measurements scheduled at baseline as well as 2, 4, 6, and 8 years. I converted data from wide to long format so that each row represents one participant at a scheduled time point. I kept separate columns for participant ID, years since baseline, and the amyloid beta 42/40 ratio. Time and amyloid beta ratio were stored as numeric variables. The tidy dataset contains `r amyloid_summary$participant_visits` rows and three columns. I retained the `r amyloid_summary$missing_ratios` missing ratios to keep the scheduled time points visible even when a measurement was unavailable.
+I imported the amyloid data by skipping the first row, which contained variable descriptions, and cleaned the column names. I treated both "NA" and "Na" as missing values. The dataset includes `r amyloid_participants` participants with measurements scheduled at baseline as well as 2, 4, 6, and 8 years. I converted data from wide to long format so that each row represents one participant at a scheduled time point. I kept separate columns for participant ID, years since baseline, and the amyloid beta 42/40 ratio. Time and amyloid beta ratio were stored as numeric variables. The tidy dataset contains `r nrow(amyloid_df)` rows and three columns. I retained the `r missing_ratios` missing ratios to keep the scheduled time points visible even when a measurement was unavailable.
 
 ### Participants appearing in only one dataset
 
@@ -299,16 +303,14 @@ mci_combined_df =
   inner_join(baseline_df, amyloid_df, by = "id") |>
   arrange(id, time)
 
-combined_summary = 
+combined_participants = 
   mci_combined_df |>
-  summarise(
-    participants = n_distinct(id),
-    participant_visits = n(),
-    variables = ncol(mci_combined_df)
-  )
+  distinct(id) |>
+  nrow()
 
-combined_summary
-
+combined_participants
+nrow(mci_combined_df)
+ncol(mci_combined_df)
 ```
 
 Export csv
@@ -317,4 +319,4 @@ write_csv(mci_combined_df, "data/mci_combined.csv")
 ```
 
 
-I used inner_join() to combine the cleaned baseline and amyloid data by participant ID, keeping only participants who appeared in both datasets. The combined dataset includes `r combined_summary$participants` participants, `r combined_summary$participant_visits` rows, and `r combined_summary$variables` columns. Each row represents one participant at a scheduled time point, with their baseline information repeated across visits. Missing amyloid ratios were retained. I exported the combined data to `data/mci_combined.csv` using write_csv().
+I used inner_join() to combine the cleaned baseline and amyloid data by participant ID, keeping only participants who appeared in both datasets. The combined dataset includes `r combined_participants` participants, `r nrow(mci_combined_df)` rows, and `r ncol(mci_combined_df)` columns. Each row represents one participant at a scheduled time point, with their baseline information repeated across visits. Missing amyloid ratios were retained. I exported the combined data to `data/mci_combined.csv` using write_csv().
