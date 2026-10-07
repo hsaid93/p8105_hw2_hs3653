@@ -11,7 +11,7 @@ library(readxl)
 library(janitor)
 ```
 
-## Problem 1
+# Problem 1
 ```{r}
 subway_df = 
   read_csv(
@@ -40,19 +40,19 @@ subway_df =
 glimpse(subway_df)
 ```
 
-# Rows and columns in the cleaned dataset
+### Rows and columns in the cleaned data
 ```{r}
 dim(subway_df)
 ```
 
-# Distinct stations, identified by both line and station name
+### Distinct stations
 ```{r}
 subway_df |>
   distinct(line, station_name) |>
   nrow()
 ```
 
-# Distinct ADA-compliant stations
+### Distinct ADA-compliant stations
 ```{r}
 subway_df |>
   filter(ada == TRUE) |>
@@ -61,7 +61,7 @@ subway_df |>
 ```
 
 
-# Proportion of entrances/exits without vending that allow entry
+### Proportion of entrances/exits without vending that allow entry
 ```{r}
 subway_df |>
   filter(vending == "NO") |>
@@ -72,7 +72,7 @@ The dataset contains information on 1,868 subway entrances and exits, including 
 
 There are 465 distinct stations, identified by station name and line, of which 84 are ADA compliant. Among station entrances and exits without vending, 37.7% allow entry. After reshaping the route columns into route-number and route-name variables, 60 distinct stations serve the A train, of which 17 are ADA compliant.
 
-## Problem 2
+# Problem 2
 ```{r}
 mr_trash_df = 
   read_excel(
@@ -99,7 +99,8 @@ professor_trash_df =
   read_excel(
     "data/202610 Trash Wheel Collection Data.xlsx",
     sheet = "Professor Trash Wheel",
-    range = cell_cols("A:M")
+    range = cell_cols("A:M"),
+    na = c("", "NA", "dive")
   ) |>
   janitor::clean_names() |>
   filter(!is.na(dumpster)) |>
@@ -144,7 +145,7 @@ trash_wheel_df |>
 glimpse(trash_wheel_df)
 ```
 
-Collect totals
+### Collect totals
 ```{r}
 professor_total_weight = 
   trash_wheel_df |>
@@ -168,9 +169,9 @@ gwynnda_june2022_butts
 
 The combined dataset contains `r nrow(trash_wheel_df)` dumpster collection observations from Mr. Trash Wheel, Professor Trash Wheel, and Gwynnda. Key variables include collection date, trash weight in tons, volume in cubic yards, and counts of litter such as plastic bottles and cigarette butts. I standardized column names, removed rows without dumpster numbers, harmonized variable types, and rounded sports-ball counts to integers. A wheel identifier distinguishes observations from the three sources. Based on available data, Professor Trash Wheel collected `r round(professor_total_weight, 2)` tons of trash, and Gwynnda collected `r format(gwynnda_june2022_butts, big.mark = ",", scientific = FALSE, trim = TRUE)` cigarette butts in June 2022.
 
-## Problem 3
+# Problem 3
 
-# Baseline demographics
+### Baseline demographics
 
 Baseline data/demographics (all patients):
 ```{r}
@@ -210,7 +211,7 @@ baseline_summary =
 
 ```
 
-ApoE4 in Women:
+### ApoE4 in Women:
 ```{r}
 women_apoe4_summary = 
   baseline_df |>
@@ -227,7 +228,7 @@ women_apoe4_summary
 
 I imported the baseline data and used the second row as the column headers. I cleaned the column names, treated "." as missing, and converted sex and APOE4 carrier status to factors from numeric. There were `r nrow(baseline_raw_df)` participants in the original dataset. I removed `r nrow(baseline_raw_df) - nrow(baseline_df)` participants whose MCI onset age was at or before their baseline age because they did not meet the requirement of being MCI-free at baseline. This left `r nrow(baseline_df)` eligible participants, of whom `r baseline_summary$developed_mci` developed MCI during follow-up. Their average baseline age was `r round(baseline_summary$mean_baseline_age, 2)` years. Among the women in this eligible group, `r women_apoe4_summary$apoe4_carriers` of `r women_apoe4_summary$women` (`r round(100 * women_apoe4_summary$proportion_carriers, 1)`%) were APOE4 carriers. After tidying, the data has one row per participant and six columns: ID, baseline age, sex, education (years), APOE4 carrier status, and age at MCI onset.
 
-# Longitudinal amyloid data
+### Longitudinal amyloid data
 
 ```{r}
 amyloid_wide_df = 
@@ -270,7 +271,7 @@ amyloid_summary
 
 I imported the amyloid data by skipping the first row, which contained variable descriptions, and cleaned the column names. I treated both "NA" and "Na" as missing values. The dataset includes `r amyloid_summary$participants` participants with measurements scheduled at baseline as well as 2, 4, 6, and 8 years. I converted data from wide to long format so that each row represents one participant at a scheduled time point. I kept separate columns for participant ID, years since baseline, and the amyloid beta 42/40 ratio. Time and amyloid beta ratio were stored as numeric variables. The tidy dataset contains `r amyloid_summary$participant_visits` rows and three columns. I retained the `r amyloid_summary$missing_ratios` missing ratios to keep the scheduled time points visible even when a measurement was unavailable.
 
-# Participants appearing in only one dataset
+### Participants appearing in only one dataset
 
 ```{r}
 
@@ -297,7 +298,7 @@ amyloid_only_df
 
 I compared participant IDs across the two datasets using anti_join(). There were `r nrow(baseline_only_df)` participants in the cleaned baseline dataset who were not in the amyloid dataset, and `r nrow(amyloid_only_df)` participants in the amyloid dataset who were not in the cleaned baseline dataset. Of the latter, `r nrow(excluded_with_amyloid_df)` were removed because their MCI onset was at or before baseline, while the other `r nrow(amyloid_only_raw_df)` were not in the original baseline file. These differences reflect both participants missing from one of the original files and those excluded during baseline cleaning.
 
-# Combine datasets and export
+### Combine datasets and export
 Both cleaned datasets
 ```{r} 
 mci_combined_df = 
