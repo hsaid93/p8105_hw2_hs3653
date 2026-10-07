@@ -180,33 +180,47 @@ baseline_df =
   ) |>
   filter(is.na(age_at_onset) | age_at_onset > baseline_age)
 
-baseline_summary = 
-  baseline_df |>
-  summarise(
-    eligible_participants = n(),
-    developed_mci = sum(!is.na(age_at_onset)),
-    mean_baseline_age = mean(baseline_age)
-  )
 
+eligible_participants = nrow(baseline_df)
+
+developed_mci = baseline_df |>
+  filter(!is.na(age_at_onset)) |>
+  nrow()
+
+mean_baseline_age = baseline_df |>
+  pull(baseline_age) |>
+  mean()
 
 ```
 
 ### ApoE4 in Women:
 ```{r}
-women_apoe4_summary = 
+women_count = 
   baseline_df |>
   filter(sex == "Female") |>
-  summarise(
-    women = n(),
-    apoe4_carriers = sum(apoe4 == "Carrier"),
-    proportion_carriers = mean(apoe4 == "Carrier")
-  )
+  nrow()
 
-baseline_summary
-women_apoe4_summary
+women_carriers = 
+  baseline_df |>
+  filter(sex == "Female", apoe4 == "Carrier") |>
+  nrow()
+
+women_carrier_proportion = 
+  baseline_df |>
+  filter(sex == "Female") |>
+  mutate(is_carrier = apoe4 == "Carrier") |>
+  pull(is_carrier) |>
+  mean()
+
+eligible_participants
+developed_mci
+mean_baseline_age
+women_count
+women_carriers
+women_carrier_proportion
 ```
 
-I imported the baseline data and used the second row as the column headers. I cleaned the column names, treated "." as missing, and converted sex and APOE4 carrier status to factors from numeric. There were `r nrow(baseline_raw_df)` participants in the original dataset. I removed `r nrow(baseline_raw_df) - nrow(baseline_df)` participants whose MCI onset age was at or before their baseline age because they did not meet the requirement of being MCI-free at baseline. This left `r nrow(baseline_df)` eligible participants, of whom `r baseline_summary$developed_mci` developed MCI during follow-up. Their average baseline age was `r round(baseline_summary$mean_baseline_age, 2)` years. Among the women in this eligible group, `r women_apoe4_summary$apoe4_carriers` of `r women_apoe4_summary$women` (`r round(100 * women_apoe4_summary$proportion_carriers, 1)`%) were APOE4 carriers. After tidying, the data has one row per participant and six columns: ID, baseline age, sex, education (years), APOE4 carrier status, and age at MCI onset.
+I imported the baseline data and used the second row as the column headers. I cleaned the column names, treated "." as missing, and converted sex and APOE4 carrier status to factors from numeric. There were `r nrow(baseline_raw_df)` participants in the original dataset. I removed `r nrow(baseline_raw_df) - nrow(baseline_df)` participants whose MCI onset age was at or before their baseline age because they did not meet the requirement of being MCI-free at baseline. This left `r nrow(baseline_df)` eligible participants, of whom `r developed_mci` developed MCI during follow-up. Their average baseline age was `r round(mean_baseline_age, 2)` years. Among the women in this eligible group, `r women_carriers` of `r women_count` (`r round(100 * women_carrier_proportion, 1)`%) were APOE4 carriers. After tidying, the data has one row per participant and six columns: ID, baseline age, sex, education (years), APOE4 carrier status, and age at MCI onset.
 
 ### Longitudinal amyloid data
 
